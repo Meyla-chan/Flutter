@@ -65,10 +65,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // ================= HEADER ICON =================
-                Icon(Icons.person_add, size: 80, color: primaryDark),
+                // ================= HEADER ==================
+                Icon(Icons.person_add_alt_1, size: 90, color: primaryDark),
                 SizedBox(height: 10),
 
                 Text(
@@ -105,7 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _inputField(
                           controller: _nameCtrl,
                           hint: "Nama Lengkap",
-                          icon: Icons.badge,
+                          icon: Icons.person,
                           validator: (v) =>
                               v!.isEmpty ? "Nama wajib diisi" : null,
                         ),
@@ -148,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         SizedBox(height: 14),
 
-                        // DROPDOWN ROLE
+                        // ================= ROLE DROPDOWN =================
                         DropdownButtonFormField<String>(
                           value: _role,
                           decoration: _inputDecoration(),
@@ -161,13 +160,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               value: "dosen",
                               child: Text("Dosen"),
                             ),
+                            DropdownMenuItem(
+                              value: "admin_prodi",
+                              child: Text("Admin Prodi"),
+                            ),
+                            DropdownMenuItem(
+                              value: "admin_poli",
+                              child: Text("Admin Poli"),
+                            ),
                           ],
                           onChanged: (v) => setState(() => _role = v!),
                         ),
 
                         SizedBox(height: 24),
 
-                        // BUTTON
+                        // ================= BUTTON =================
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -197,6 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         SizedBox(height: 14),
 
+                        // ================= LOGIN LINK =================
                         TextButton(
                           onPressed: () {
                             Navigator.pushReplacement(

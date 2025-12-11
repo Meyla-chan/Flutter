@@ -3,6 +3,8 @@ import '../../utils/storage.dart';
 import '../login/login_screen.dart';
 import 'edit_profil_mahasiswa.dart';
 import 'edit_profil_dosen.dart';
+import 'edit_profil_admin_prodi.dart';
+import 'edit_profil_admin_poli.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -39,17 +41,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
 
     final role = user!["role"];
+    Widget page;
+
+    if (role == "mahasiswa") {
+      page = EditProfileMahasiswa();
+    } else if (role == "dosen") {
+      page = EditProfileDosen();
+    } else if (role == "admin_prodi") {
+      page = EditProfileAdminProdi();
+    } else if (role == "admin_poli") {
+      page = EditProfileAdminPoli();
+    } else {
+      return;
+    }
 
     final updated = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            role == "mahasiswa" ? EditProfileMahasiswa() : EditProfileDosen(),
-      ),
+      MaterialPageRoute(builder: (_) => page),
     );
 
     if (updated == true) {
-      loadUser(); // refresh data setelah edit
+      loadUser();
     }
   }
 
@@ -89,7 +101,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Avatar
                         CircleAvatar(
                           radius: 45,
                           backgroundColor: Colors.white,
@@ -142,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   SizedBox(height: 20),
 
-                  // ---------------- CONTENT ----------------
                   Expanded(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.symmetric(horizontal: 18),
@@ -154,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           SizedBox(height: 12),
 
-                          // ==================== DATA MAHASISWA ====================
+                          // ==================== MAHASISWA ====================
                           if (role == "mahasiswa") ...[
                             _sectionTitle("Data Mahasiswa"),
                             _infoTile("NIM", user?["nim"]),
@@ -166,10 +176,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _infoTile("Status", user?["status"]),
                           ],
 
-                          // ==================== DATA DOSEN ====================
+                          // ==================== DOSEN ====================
                           if (role == "dosen") ...[
                             _sectionTitle("Data Dosen"),
-                            _infoTile("NIP/NIDN", user?["nip"]),
+                            _infoTile("NIP / NIDN", user?["nip"]),
                             _infoTile("Jabatan", user?["jabatan"]),
                             _infoTile("Keahlian", user?["keahlian"]),
                             _infoTile("Email", user?["email"]),
@@ -180,9 +190,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
 
+                          // ==================== ADMIN PRODI ====================
+                          if (role == "admin_prodi") ...[
+                            _sectionTitle("Data Admin Prodi"),
+                            _infoTile("Nama Prodi", user?["prodi"]),
+                            _infoTile("Fakultas", user?["fakultas"]),
+                            _infoTile("Jumlah Mahasiswa", user?["jumlah_mahasiswa"]),
+                            _infoTile("Jumlah Dosen", user?["jumlah_dosen"]),
+                          ],
+
+                          // ==================== ADMIN POLI ====================
+                          if (role == "admin_poli") ...[
+                            _sectionTitle("Data Admin Poli"),
+                            _infoTile("Nama Poli", user?["poli"]),
+                            _infoTile("Jumlah Dokter", user?["jumlah_dokter"]),
+                            _infoTile("Jumlah Suster", user?["jumlah_suster"]),
+                          ],
+
                           SizedBox(height: 30),
 
-                          // LOGOUT BUTTON
                           Center(
                             child: ElevatedButton(
                               onPressed: _logout,
@@ -213,8 +239,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  // ---------------- WIDGETS ----------------
 
   Widget _sectionTitle(String title) {
     return Padding(
