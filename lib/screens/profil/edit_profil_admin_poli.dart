@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/storage.dart';
+import '../../services/api_service.dart';
 
 class EditProfileAdminPoli extends StatefulWidget {
   @override
@@ -8,6 +9,9 @@ class EditProfileAdminPoli extends StatefulWidget {
 
 class _EditProfileAdminPoliState extends State<EditProfileAdminPoli> {
   final _formKey = GlobalKey<FormState>();
+
+  Map<String, dynamic> user = {};
+  bool loading = true;
 
   late TextEditingController nama;
   late TextEditingController email;
@@ -18,46 +22,68 @@ class _EditProfileAdminPoliState extends State<EditProfileAdminPoli> {
   @override
   void initState() {
     super.initState();
-    final user = Storage.getUser();
-
-    nama = TextEditingController(text: user?["name"] ?? "");
-    email = TextEditingController(text: user?["email"] ?? "");
-    poli = TextEditingController(text: user?["poli"] ?? "");
-
-    jumlahDokter = TextEditingController(
-      text: user?["jumlah_dokter"]?.toString() ?? "",
-    );
-
-    jumlahSuster = TextEditingController(
-      text: user?["jumlah_suster"]?.toString() ?? "",
-    );
+    _loadUser();
   }
 
+  /// ===============================
+  /// LOAD USER (ASYNC & AMAN)
+  /// ===============================
+  void _loadUser() async {
+    final u = await Storage.getUser();
+
+    if (!mounted) return;
+
+    user = u ?? {};
+
+    nama = TextEditingController(text: user["name"] ?? "");
+    email = TextEditingController(text: user["email"] ?? "");
+    poli = TextEditingController(text: user["poli"] ?? "");
+    jumlahDokter = TextEditingController(
+      text: user["jumlah_dokter"]?.toString() ?? "",
+    );
+    jumlahSuster = TextEditingController(
+      text: user["jumlah_suster"]?.toString() ?? "",
+    );
+
+    setState(() => loading = false);
+  }
+
+  /// ===============================
+  /// SAVE (DATA LAMA TIDAK HILANG)
+  /// ===============================
   void _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final updated = {
-      "role": "admin_poli",
+    final user = Storage.getUser();
+    final id = user!["id"];
+
+    final success = await ApiService.updateUser(id, {
       "name": nama.text,
       "email": email.text,
       "poli": poli.text,
       "jumlah_dokter": jumlahDokter.text,
       "jumlah_suster": jumlahSuster.text,
-    };
+    });
 
-    await Storage.saveUser(updated);
-    Navigator.pop(context, true);
+    if (success) {
+      await ApiService.getMe(); // refresh user
+      Navigator.pop(context, true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Profil Admin Poli"),
-        backgroundColor: Color(0xFF133E87),
+        title: const Text("Edit Profil Admin Poli"),
+        backgroundColor: const Color(0xFF133E87),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -65,19 +91,29 @@ class _EditProfileAdminPoliState extends State<EditProfileAdminPoli> {
               _field("Nama", nama),
               _field("Email", email),
               _field("Nama Poli", poli),
-              _field("Jumlah Dokter", jumlahDokter),
-              _field("Jumlah Suster", jumlahSuster),
+              _field(
+                "Jumlah Dokter",
+                jumlahDokter,
+                keyboard: TextInputType.number,
+              ),
+              _field(
+                "Jumlah Suster",
+                jumlahSuster,
+                keyboard: TextInputType.number,
+              ),
 
-              SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF133E87),
+                  backgroundColor: const Color(0xFF133E87),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: Text(
+                child: const Text(
                   "Simpan Perubahan",
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -87,18 +123,26 @@ class _EditProfileAdminPoliState extends State<EditProfileAdminPoli> {
     );
   }
 
-  Widget _field(String title, TextEditingController controller) {
+  /// ===============================
+  /// FIELD WIDGET
+  /// ===============================
+  Widget _field(
+    String title,
+    TextEditingController controller, {
+    TextInputType keyboard = TextInputType.text,
+  }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
+        keyboardType: keyboard,
         decoration: InputDecoration(
           labelText: title,
           filled: true,
           fillColor: Colors.grey[200],
-          border: OutlineInputBorder(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
+        validator: (v) => v == null || v.isEmpty ? "Wajib diisi" : null,
       ),
     );
   }

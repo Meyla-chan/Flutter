@@ -25,9 +25,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     loadUser();
   }
 
-  void loadUser() {
-    user = Storage.getUser();
-    setState(() => loading = false);
+  void loadUser() async {
+    final u = await Storage.getUser();
+
+    if (!mounted) return;
+
+    setState(() {
+      user = u;
+      loading = false;
+    });
   }
 
   String initials(String name) {
@@ -166,14 +172,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           // ==================== MAHASISWA ====================
                           if (role == "mahasiswa") ...[
-                            _sectionTitle("Data Mahasiswa"),
-                            _infoTile("NIM", user?["nim"]),
-                            _infoTile("Program Studi", user?["prodi"]),
-                            _infoTile("Fakultas", user?["fakultas"]),
-                            _infoTile("Angkatan", user?["angkatan"]),
-                            _infoTile("Kelas", user?["kelas"]),
-                            _infoTile("Dosen PA", user?["dosen_pa"]),
-                            _infoTile("Status", user?["status"]),
+                             _sectionTitle("Data Mahasiswa"),
+                             // Ganti user?["nim"] menjadi user?["mahasiswa"]?["nim"]
+                             _infoTile("NIM", user?["mahasiswa"]?["nim"]), 
+                             _infoTile("Program Studi", user?["mahasiswa"]?["program_studi"]), // Sesuaikan key dengan API
+                             _infoTile("Fakultas", user?["mahasiswa"]?["fakultas"]),
+                             _infoTile("Angkatan", user?["mahasiswa"]?["angkatan"]),
+                             _infoTile("Kelas", user?["mahasiswa"]?["kelas"]),
+                             _infoTile("Dosen PA", user?["mahasiswa"]?["dosen_pa"]),
+                             _infoTile("Status", user?["mahasiswa"]?["status"]),
                           ],
 
                           // ==================== DOSEN ====================

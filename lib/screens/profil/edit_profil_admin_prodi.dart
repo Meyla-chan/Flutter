@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/storage.dart';
+import '../../services/api_service.dart';
 
 class EditProfileAdminProdi extends StatefulWidget {
   @override
@@ -8,6 +9,9 @@ class EditProfileAdminProdi extends StatefulWidget {
 
 class _EditProfileAdminProdiState extends State<EditProfileAdminProdi> {
   final _formKey = GlobalKey<FormState>();
+
+  Map<String, dynamic> user = {};
+  bool loading = true;
 
   late TextEditingController nama;
   late TextEditingController email;
@@ -19,26 +23,43 @@ class _EditProfileAdminProdiState extends State<EditProfileAdminProdi> {
   @override
   void initState() {
     super.initState();
-    final user = Storage.getUser();
-
-    nama = TextEditingController(text: user?["name"] ?? "");
-    email = TextEditingController(text: user?["email"] ?? "");
-    prodi = TextEditingController(text: user?["prodi"] ?? "");
-    fakultas = TextEditingController(text: user?["fakultas"] ?? "");
-
-    jumlahMahasiswa = TextEditingController(
-      text: user?["jumlah_mahasiswa"]?.toString() ?? "",
-    );
-
-    jumlahDosen = TextEditingController(
-      text: user?["jumlah_dosen"]?.toString() ?? "",
-    );
+    _loadUser();
   }
 
+  /// ===============================
+  /// LOAD USER (AMAN & ASYNC)
+  /// ===============================
+  void _loadUser() async {
+    final u = await Storage.getUser();
+
+    if (!mounted) return;
+
+    user = u ?? {};
+
+    nama = TextEditingController(text: user["name"] ?? "");
+    email = TextEditingController(text: user["email"] ?? "");
+    prodi = TextEditingController(text: user["prodi"] ?? "");
+    fakultas = TextEditingController(text: user["fakultas"] ?? "");
+    jumlahMahasiswa = TextEditingController(
+      text: user["jumlah_mahasiswa"]?.toString() ?? "",
+    );
+    jumlahDosen = TextEditingController(
+      text: user["jumlah_dosen"]?.toString() ?? "",
+    );
+
+    setState(() => loading = false);
+  }
+
+  /// ===============================
+  /// SAVE (PERTAHANKAN DATA LAMA)
+  /// ===============================
   void _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final updated = {
+    final user = Storage.getUser();
+    final id = user!["id"];
+
+    final success = await ApiService.updateUser(id, {
       "role": "admin_prodi",
       "name": nama.text,
       "email": email.text,
@@ -46,22 +67,27 @@ class _EditProfileAdminProdiState extends State<EditProfileAdminProdi> {
       "fakultas": fakultas.text,
       "jumlah_mahasiswa": jumlahMahasiswa.text,
       "jumlah_dosen": jumlahDosen.text,
-    };
+    });
 
-    await Storage.saveUser(updated);
-
-    Navigator.pop(context, true);
+    if (success) {
+      await ApiService.getMe(); // refresh user
+      Navigator.pop(context, true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Profil Admin Prodi"),
-        backgroundColor: Color(0xFF133E87),
+        title: const Text("Edit Profil Admin Prodi"),
+        backgroundColor: const Color(0xFF133E87),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -70,19 +96,29 @@ class _EditProfileAdminProdiState extends State<EditProfileAdminProdi> {
               _field("Email", email),
               _field("Program Studi", prodi),
               _field("Fakultas", fakultas),
-              _field("Jumlah Mahasiswa", jumlahMahasiswa),
-              _field("Jumlah Dosen", jumlahDosen),
+              _field(
+                "Jumlah Mahasiswa",
+                jumlahMahasiswa,
+                keyboard: TextInputType.number,
+              ),
+              _field(
+                "Jumlah Dosen",
+                jumlahDosen,
+                keyboard: TextInputType.number,
+              ),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 24),
 
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF133E87),
+                  backgroundColor: const Color(0xFF133E87),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: Text(
+                child: const Text(
                   "Simpan Perubahan",
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -92,18 +128,26 @@ class _EditProfileAdminProdiState extends State<EditProfileAdminProdi> {
     );
   }
 
-  Widget _field(String title, TextEditingController controller) {
+  /// ===============================
+  /// FORM FIELD
+  /// ===============================
+  Widget _field(
+    String title,
+    TextEditingController controller, {
+    TextInputType keyboard = TextInputType.text,
+  }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
+        keyboardType: keyboard,
         decoration: InputDecoration(
           labelText: title,
           filled: true,
           fillColor: Colors.grey[200],
-          border: OutlineInputBorder(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
+        validator: (v) => v == null || v.isEmpty ? "Wajib diisi" : null,
       ),
     );
   }
