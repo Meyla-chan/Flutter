@@ -38,10 +38,12 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   void _checkLoginState() async {
-    final t = Storage.getToken();
-    final u = Storage.getUser();
+    final t = await Storage.getToken();
+    final u = await Storage.getUser();
 
     await Future.delayed(Duration(milliseconds: 500));
+
+    if (!mounted) return;
 
     setState(() {
       _token = t;
@@ -49,6 +51,7 @@ class _LandingPageState extends State<LandingPage> {
       _checked = true;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {

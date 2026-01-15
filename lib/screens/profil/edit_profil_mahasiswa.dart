@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/storage.dart';
+import '../../services/api_service.dart';
 
 class EditProfileMahasiswa extends StatefulWidget {
   @override
@@ -7,6 +8,8 @@ class EditProfileMahasiswa extends StatefulWidget {
 }
 
 class _EditProfileMahasiswaState extends State<EditProfileMahasiswa> {
+  bool loading = true;
+
   final _formKey = GlobalKey<FormState>();
 
   late Map<String, dynamic> user;
@@ -23,41 +26,67 @@ class _EditProfileMahasiswaState extends State<EditProfileMahasiswa> {
   @override
   void initState() {
     super.initState();
+    _loadUser();
+  }
 
-    // AMAN DARI NULL
-    user = Storage.getUser() ?? {};
+  void _loadUser() async {
+    final u = await Storage.getUser();
+    if (!mounted) return;
+
+    user = u ?? {};
+
+    // Ambil data nested
+    final mhs = user["mahasiswa"] ?? {};
 
     nama = TextEditingController(text: user["name"] ?? "");
-    nim = TextEditingController(text: user["nim"] ?? "");
-    prodi = TextEditingController(text: user["prodi"] ?? "");
-    fakultas = TextEditingController(text: user["fakultas"] ?? "");
-    angkatan = TextEditingController(text: user["angkatan"] ?? "");
-    kelas = TextEditingController(text: user["kelas"] ?? "");
-    dosenPa = TextEditingController(text: user["dosen_pa"] ?? "");
-    status = TextEditingController(text: user["status"] ?? "");
+
+    // Ambil dari variabel 'mhs', bukan 'user' langsung
+    nim = TextEditingController(text: mhs["nim"] ?? "");
+    prodi = TextEditingController(
+      text: mhs["program_studi"] ?? "",
+    ); // Pastikan key sama dengan API (program_studi / prodi)
+    fakultas = TextEditingController(text: mhs["fakultas"] ?? "");
+    angkatan = TextEditingController(text: mhs["angkatan"] ?? "");
+    kelas = TextEditingController(text: mhs["kelas"] ?? "");
+    dosenPa = TextEditingController(text: mhs["dosen_pa"] ?? "");
+    status = TextEditingController(text: mhs["status"] ?? "");
+
+    setState(() {
+      loading = false;
+    });
   }
 
   void _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final updated = {
-      "role": "mahasiswa",
-      "name": nama.text,
+    // Panggil fungsi updateProfile yang baru (tanpa ID)
+    final success = await ApiService.updateProfile({
+      "name": nama.text, // Backend butuh ini
       "nim": nim.text,
-      "prodi": prodi.text,
+      "program_studi": prodi
+          .text, // Pastikan key kiriman sesuai request Laravel ($request->program_studi)
       "fakultas": fakultas.text,
       "angkatan": angkatan.text,
       "kelas": kelas.text,
       "dosen_pa": dosenPa.text,
       "status": status.text,
-    };
+    });
 
-    await Storage.saveUser(updated);
-    Navigator.pop(context, true);
+    if (success) {
+      await ApiService.getMe(); // Refresh data user lokal
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal update")));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       backgroundColor: Color(0xFFE8F1FA),
       appBar: AppBar(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../utils/storage.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../utils/storage.dart';
+import '../../services/api_service.dart';
 
 class EditProfileDosen extends StatefulWidget {
   @override
@@ -10,31 +11,49 @@ class EditProfileDosen extends StatefulWidget {
 class _EditProfileDosenState extends State<EditProfileDosen> {
   final _formKey = GlobalKey<FormState>();
 
+  Map<String, dynamic> user = {};
+  bool loading = true;
+
   late TextEditingController nama;
   late TextEditingController nip;
   late TextEditingController jabatan;
   late TextEditingController keahlian;
   late TextEditingController email;
 
-  String? filePath; // file excel untuk bimbingan
+  String? filePath;
 
   @override
   void initState() {
     super.initState();
-    final user = Storage.getUser();
-
-    nama = TextEditingController(text: user?["name"] ?? "");
-    nip = TextEditingController(text: user?["nip"] ?? "");
-    jabatan = TextEditingController(text: user?["jabatan"] ?? "");
-    keahlian = TextEditingController(text: user?["keahlian"] ?? "");
-    email = TextEditingController(text: user?["email"] ?? "");
-
-    filePath = user?["file_bimbingan"];
+    _loadUser();
   }
 
-  /// ============================================
+  /// ===============================
+  /// LOAD USER (ASYNC & AMAN)
+  /// ===============================
+  void _loadUser() async {
+    final u = await Storage.getUser();
+
+    if (!mounted) return;
+
+    user = u ?? {};
+
+    final dsn = user["dosen"] ?? {};
+
+    nama = TextEditingController(text: user["name"] ?? "");
+    nip = TextEditingController(text: dsn["nip"] ?? "");
+    jabatan = TextEditingController(text: dsn["jabatan"] ?? "");
+    keahlian = TextEditingController(text: dsn["keahlian"] ?? "");
+    email = TextEditingController(text: dsn["email"] ?? "");
+
+    filePath = dsn["file_bimbingan"];
+
+    setState(() => loading = false);
+  }
+
+  /// ===============================
   /// PICK FILE EXCEL
-  /// ============================================
+  /// ===============================
   Future<void> pickExcel() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -48,36 +67,45 @@ class _EditProfileDosenState extends State<EditProfileDosen> {
     }
   }
 
-  /// ============================================
-  /// SAVE
-  /// ============================================
+  /// ===============================
+  /// SAVE DATA (TIDAK HAPUS DATA LAMA)
+  /// ===============================
   void _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final updated = {
+    final success = await ApiService.updateProfile({
       "role": "dosen",
       "name": nama.text,
       "nip": nip.text,
       "jabatan": jabatan.text,
       "keahlian": keahlian.text,
       "email": email.text,
-      "file_bimbingan": filePath, // hanya file excel
-    };
+      "file_bimbingan": filePath,
+    });
 
-    await Storage.saveUser(updated);
-
-    Navigator.pop(context, true);
+    if (success) {
+      await ApiService.getMe(); // refresh user
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal Update")));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Profil Dosen"),
-        backgroundColor: Color(0xFF133E87),
+        title: const Text("Edit Profil Dosen"),
+        backgroundColor: const Color(0xFF133E87),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -88,34 +116,45 @@ class _EditProfileDosenState extends State<EditProfileDosen> {
               _field("Keahlian", keahlian),
               _field("Email", email),
 
-              SizedBox(height: 12),
-              Text("Upload Daftar Mahasiswa Bimbingan (Excel)"),
-              SizedBox(height: 6),
+              const SizedBox(height: 14),
+
+              const Text(
+                "Upload Daftar Mahasiswa Bimbingan (Excel)",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
 
               ElevatedButton(
                 onPressed: pickExcel,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF133E87),
+                  backgroundColor: const Color(0xFF133E87),
                   foregroundColor: Colors.white,
                 ),
-                child: Text("Upload File Excel"),
+                child: const Text("Upload File Excel"),
               ),
 
               if (filePath != null)
                 Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text("File: $filePath"),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    "File: $filePath",
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF133E87),
+                  backgroundColor: const Color(0xFF133E87),
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: Text("Simpan Perubahan"),
+                child: const Text(
+                  "Simpan Perubahan",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -124,18 +163,21 @@ class _EditProfileDosenState extends State<EditProfileDosen> {
     );
   }
 
+  /// ===============================
+  /// FORM FIELD
+  /// ===============================
   Widget _field(String title, TextEditingController controller) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: controller,
         decoration: InputDecoration(
           labelText: title,
           filled: true,
           fillColor: Colors.grey[200],
-          border: OutlineInputBorder(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
+        validator: (v) => v == null || v.isEmpty ? "Wajib diisi" : null,
       ),
     );
   }

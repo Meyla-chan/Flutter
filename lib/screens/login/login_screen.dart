@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
-import '../../utils/storage.dart';
 import '../register/register_screen.dart';
 import '../profil/profile_screen.dart';
 
@@ -18,26 +17,39 @@ class _LoginScreenState extends State<LoginScreen> {
   final Color primaryDark = Color(0xFF133E87);
   final Color primaryLight = Color(0xFF608BC1);
   final Color backgroundSoft = Color(0xFFE8F1FA);
-
-  void _login() async {
+void _login() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Mulai Loading
     setState(() => loading = true);
 
-    final resp = await ApiService.login(_email.text.trim(), _pass.text);
-    setState(() => loading = false);
+    try {
+      final result = await ApiService.login(_email.text.trim(), _pass.text);
 
-    if (resp['ok'] == true) {
-      await Storage.saveUser(resp['user']);
-      await Storage.saveToken(resp['token']);
+      if (!mounted) return; // Cek apakah layar masih aktif
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => ProfileScreen()),
-      );
-    } else {
+      if (result["ok"] == true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ProfileScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result["message"] ?? "Login gagal"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Login gagal")));
+      ).showSnackBar(SnackBar(content: Text("Error Aplikasi: $e")));
+    } finally {
+      // PENTING: Apapun yang terjadi, matikan loading!
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 

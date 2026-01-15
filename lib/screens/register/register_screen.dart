@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/storage.dart';
+import '../../services/api_service.dart';
 import '../login/login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -28,32 +28,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _loading = true);
 
-    final user = {
-      "name": _nameCtrl.text.trim(),
-      "email": _emailCtrl.text.trim(),
-      "password": _passwordCtrl.text.trim(),
-      "role": _role,
-    };
-
-    await Storage.saveUser(user);
-    await Storage.saveToken("dummy-token");
+    final res = await ApiService.register(
+      name: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text.trim(),
+      role: _role,
+    );
 
     setState(() => _loading = false);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Registrasi berhasil!")));
+    if (res["ok"] == true) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Registrasi berhasil!")));
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => LoginScreen()),
-    );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    Storage.init();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res["message"] ?? "Registrasi gagal")),
+      );
+    }
   }
 
   @override
